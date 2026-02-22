@@ -50,15 +50,14 @@ const Header: React.FC<{ skpd: SKPDConfig }> = ({ skpd }) => {
           <img src={skpd.logo || DEFAULT_LOGO} alt="Logo" className="max-w-full max-h-full object-contain" />
         </div>
         <div className="flex-1 px-2">
-          <h3 className="text-[12pt] font-normal uppercase whitespace-nowrap leading-tight">Pemerintah {displayProvinsiBaris1}</h3>
-          <h2 className={`${skpdFontSize} font-bold uppercase whitespace-nowrap leading-tight mt-1 mb-0.5`}>{skpd.namaSkpd}</h2>
+          <h3 className="text-[12pt] font-normal uppercase leading-tight">Pemerintah {displayProvinsiBaris1}</h3>
+          <h2 className={`${skpdFontSize} font-bold uppercase leading-tight mt-1 mb-0.5`}>{skpd.namaSkpd}</h2>
           {provinsiValue && !isProvInName && (
-            <h2 className={`${skpdFontSize} font-bold uppercase whitespace-nowrap leading-tight mb-1`}>{provinsiValue.toUpperCase()}</h2>
+            <h2 className={`${skpdFontSize} font-bold uppercase leading-tight mb-1`}>{provinsiValue.toUpperCase()}</h2>
           )}
           <p className="text-[9pt] font-normal leading-tight mt-1">{skpd.alamat}</p>
           {skpd.lokasi && <p className="text-[9pt] font-bold uppercase tracking-tight mt-0.5">{skpd.lokasi}</p>}
         </div>
-        <div className="w-20 h-20 flex-shrink-0 opacity-0">Logo</div>
       </div>
       <div className="border-b-[2.5pt] border-black mt-1"></div>
       <div className="border-b-[0.5pt] border-black mt-[1.5pt]"></div>
