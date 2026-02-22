@@ -1,0 +1,96 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIPD - Sistem Informasi Perjalanan Dinas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      :root {
+        --print-width: 210mm;
+        --print-height: 297mm;
+        --print-width-ls: 297mm;
+        --print-height-ls: 210mm;
+      }
+
+      @media print {
+        .no-print { display: none !important; }
+        body { background: white; margin: 0; padding: 0; color: black !important; }
+        .print-page { 
+          width: var(--print-width); 
+          min-height: var(--print-height); 
+          padding: 10mm 15mm; 
+          margin: 0 auto;
+          page-break-after: always;
+          box-sizing: border-box;
+          position: relative;
+          background: white !important;
+          font-family: 'Tahoma', sans-serif !important;
+        }
+        .landscape-page {
+          width: var(--print-width-ls);
+          min-height: var(--print-height-ls);
+          padding: 10mm 15mm;
+          margin: 0 auto;
+          page-break-after: always;
+          box-sizing: border-box;
+          background: white !important;
+          font-family: 'Tahoma', sans-serif !important;
+        }
+        @page { size: auto; margin: 0mm; }
+      }
+
+      @media screen {
+        .print-page {
+          width: var(--print-width);
+          min-height: var(--print-height);
+          background: white;
+          box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+          margin: 2rem auto;
+          padding: 10mm 15mm;
+          border: 1px solid #e5e7eb;
+        }
+        .landscape-page {
+          width: var(--print-width-ls);
+          min-height: var(--print-height-ls);
+          background: white;
+          box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+          margin: 2rem auto;
+          padding: 10mm 15mm;
+          border: 1px solid #e5e7eb;
+        }
+      }
+
+      ::-webkit-scrollbar { width: 6px; }
+      ::-webkit-scrollbar-track { background: #f1f5f9; }
+      ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    </style>
+    <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@19.0.0",
+    "react-dom": "https://esm.sh/react-dom@19.0.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+    "lucide-react": "https://esm.sh/lucide-react@0.463.0?external=react",
+    "xlsx": "https://esm.sh/xlsx@0.18.5",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.39.0",
+    "recharts": "https://esm.sh/recharts@2.15.0?external=react,react-dom",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "vite": "https://esm.sh/vite@^7.3.1"
+  }
+}
+</script>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    <div id="root"></div>
+    <script type="module" src="./index.tsx"></script>
+    <noscript>
+      <div style="padding: 20px; text-align: center; font-family: sans-serif;">
+        <h1>JavaScript Dinonaktifkan</h1>
+        <p>Aplikasi ini memerlukan JavaScript untuk berjalan.</p>
+      </div>
+    </noscript>
+</body>
+</html>
