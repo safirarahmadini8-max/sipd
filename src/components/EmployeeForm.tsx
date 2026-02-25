@@ -9,9 +9,10 @@ interface Props {
   employees: Employee[];
   onSave: (emp: Employee) => void;
   onDelete: (id: string) => void;
+  onClear: () => void;
 }
 
-export const EmployeeForm: React.FC<Props> = ({ employees, onSave, onDelete }) => {
+export const EmployeeForm: React.FC<Props> = ({ employees, onSave, onDelete, onClear }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Employee>({
@@ -97,6 +98,14 @@ export const EmployeeForm: React.FC<Props> = ({ employees, onSave, onDelete }) =
           <p className="text-[10px] text-slate-500 font-medium mt-0.5 italic">Format Import: Nama, NIP, Gol., Pangkat, Jabatan</p>
         </div>
         <div className="flex gap-2">
+          {employees.length > 0 && (
+            <button 
+              onClick={() => { if(confirm('Hapus semua data pegawai?')) onClear(); }}
+              className="flex items-center gap-2 bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 px-4 py-2 rounded-lg transition text-xs font-bold uppercase tracking-wider"
+            >
+              <Trash2 size={16} /> Hapus Semua
+            </button>
+          )}
           <label className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg cursor-pointer transition text-xs font-bold uppercase tracking-wider">
             <Upload size={16} /> Impor Excel
             <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleExcelImport} />
