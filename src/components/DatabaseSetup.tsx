@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Database, Link, Key, CheckCircle, ShieldAlert } from 'lucide-react';
+import { LOGO_NTB } from '../constants';
 
 interface Props {
   onConnect: (url: string, key: string) => void;
@@ -21,11 +22,12 @@ export const DatabaseSetup: React.FC<Props> = ({ onConnect }) => {
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 font-['Tahoma']">
       <div className="max-w-md w-full bg-slate-900 rounded-3xl shadow-2xl border border-slate-800 p-8 animate-in zoom-in-95 duration-500">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-600/20 text-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-500/30 shadow-lg shadow-blue-500/10">
-            <Database size={32} />
+          <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-700 shadow-lg shadow-blue-500/10 p-2">
+            <img src={LOGO_NTB} alt="Logo NTB" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
           </div>
-          <h1 className="text-2xl font-black text-white italic tracking-tighter">SIPD<span className="text-blue-500">LITE</span></h1>
-          <p className="text-slate-400 text-xs mt-2 font-medium leading-relaxed">Masukkan konfigurasi database Supabase Anda untuk melanjutkan.</p>
+          <h1 className="text-2xl font-black text-white tracking-tighter">SIPD<span className="text-blue-500">LITE</span></h1>
+          <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1">PROV. NTB</p>
+          <p className="text-slate-500 text-[10px] mt-4 font-medium leading-relaxed">Masukkan konfigurasi database Supabase Anda untuk melanjutkan.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">

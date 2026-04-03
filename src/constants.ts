@@ -46,3 +46,5 @@ export const TREASURER = {
   name: "SILVIANI, S.Adm",
   nip: "19810901 200801 2 018"
 };
+
+export const LOGO_NTB = "https://upload.wikimedia.org/wikipedia/commons/thumb/0/03/Logo_Provinsi_Nusa_TENGGARA_BARAT.png/300px-Logo_Provinsi_Nusa_Tenggara_Barat.png";

@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 // Import formatDateID to fix "Cannot find name 'formatDateID'" error
 import { formatNumber, formatDateID } from './utils';
-import { OFFICE_NAME, OFFICE_ADDRESS, HEAD_OF_OFFICE, TREASURER } from './constants';
+import { OFFICE_NAME, OFFICE_ADDRESS, HEAD_OF_OFFICE, TREASURER, LOGO_NTB } from './constants';
 
 const App: React.FC = () => {
   const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
@@ -360,7 +360,15 @@ const App: React.FC = () => {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-slate-50">
       <aside className="w-full md:w-64 bg-slate-900 text-white p-6 flex-shrink-0 z-20">
-        <div className="flex items-center gap-3 mb-10 border-b border-slate-800 pb-6"><div className="bg-blue-600 p-2.5 rounded-xl"><FileText size={24} /></div><div><h1 className="text-xl font-black italic">SIPD<span className="text-blue-500">LITE</span></h1><p className="text-[10px] font-bold text-slate-500 uppercase">Perjalanan Dinas</p></div></div>
+        <div className="flex items-center gap-3 mb-10 border-b border-slate-800 pb-6">
+          <div className="bg-white p-1.5 rounded-xl">
+            <img src={LOGO_NTB} alt="Logo NTB" className="w-8 h-8 object-contain" referrerPolicy="no-referrer" />
+          </div>
+          <div>
+            <h1 className="text-sm font-black tracking-tighter leading-none">SIPD<span className="text-blue-500">LITE</span></h1>
+            <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-1">PROV. NTB</p>
+          </div>
+        </div>
         <nav className="space-y-1">
           {[
             { id: ViewMode.DASHBOARD, label: 'Dashboard', icon: LayoutDashboard },
