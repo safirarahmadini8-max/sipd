@@ -30,6 +30,16 @@ const BLOCK_STYLE = {
   paddingTop: 'pt-[130px]',
 };
 
+// CSS for printing
+const PRINT_STYLES = `
+  @media print {
+    .print-page {
+      page-break-after: always;
+      break-after: page;
+    }
+  }
+`;
+
 const Header: React.FC<{ skpd: SKPDConfig }> = ({ skpd }) => {
   const provinsiValue = skpd.provinsi?.trim() || '';
   const displayProvinsiBaris1 = provinsiValue || "PROVINSI NUSA TENGGARA BARAT";
@@ -417,10 +427,11 @@ export const SPPDFrontTemplate: React.FC<Props> = ({ assignment, employees, skpd
 
   return (
     <>
+      <style>{PRINT_STYLES}</style>
       {assignment.selectedEmployeeIds.map((empId) => {
         const emp = employees.find(e => e.id === empId);
         return (
-          <div key={empId} className="print-page bg-white font-['Tahoma'] text-black leading-tight text-[11pt] border border-black relative mb-8 last:mb-0">
+          <div key={empId} className="print-page bg-white font-['Tahoma'] text-black leading-tight text-[11pt] border border-black relative mb-8 last:mb-0 break-after-page">
             <Header skpd={skpd} />
             <div className="flex justify-end mb-2">
               <div className="w-1/2 text-[10pt]">
@@ -467,8 +478,9 @@ export const SPPDBackTemplate: React.FC<Props> = ({ assignment, skpd, officials,
   
   return (
     <>
+      <style>{PRINT_STYLES}</style>
       {assignment.selectedEmployeeIds.map((empId) => (
-        <div key={empId} className="print-page bg-white font-['Tahoma'] text-[10pt] border border-black relative leading-tight text-black mb-8 last:mb-0">
+        <div key={empId} className="print-page bg-white font-['Tahoma'] text-[10pt] border border-black relative leading-tight text-black mb-8 last:mb-0 break-after-page">
           <div className="flex justify-end mt-4 px-2">
             <div className="w-[340px] space-y-0.5 mb-2">
               <div className="grid grid-cols-[100px_10px_1fr]"><span>SPPD No.</span><span>:</span><span className="font-bold">{assignment.assignmentNumber}</span></div>
