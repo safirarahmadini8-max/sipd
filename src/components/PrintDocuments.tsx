@@ -33,10 +33,55 @@ const BLOCK_STYLE = {
 // CSS for printing
 const PRINT_STYLES = `
   @media print {
-    .print-page {
-      page-break-after: always;
-      break-after: page;
+    @page {
+      margin: 0.5cm;
+      size: portrait;
     }
+    .print-page {
+      page-break-after: always !important;
+      break-after: page !important;
+      display: block !important;
+      width: 100% !important;
+      max-width: 210mm; /* A4 Width */
+      margin: 0 auto !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+    .landscape-page {
+      page-break-after: always !important;
+      break-after: page !important;
+      display: block !important;
+      width: 100% !important;
+      max-width: 297mm; /* A4 Landscape Width */
+      margin: 0 auto !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+    body {
+      margin: 0 !important;
+      padding: 0 !important;
+      background: white !important;
+    }
+    .no-print {
+      display: none !important;
+    }
+  }
+  /* Preview styles */
+  .print-page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 1cm;
+    margin: 0 auto 2rem auto;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    background: white;
+  }
+  .landscape-page {
+    width: 297mm;
+    min-height: 210mm;
+    padding: 1cm;
+    margin: 0 auto 2rem auto;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    background: white;
   }
 `;
 
@@ -108,6 +153,7 @@ export const KuitansiTemplate: React.FC<Props> = ({ assignment, employees, skpd,
 
   return (
     <div className="print-page bg-white font-['Tahoma'] text-[11pt] leading-tight text-black">
+      <style dangerouslySetInnerHTML={{ __html: PRINT_STYLES }} />
       <Header skpd={skpd} />
       
       {/* Box Info Kanan Atas */}
@@ -183,6 +229,7 @@ export const LampiranIIITemplate: React.FC<Props> = ({ assignment, employees, sk
   
   return (
     <div className="space-y-8 font-['Tahoma'] text-black">
+      <style dangerouslySetInnerHTML={{ __html: PRINT_STYLES }} />
       {assignment.costs.map((cost) => {
         const emp = employees.find(e => e.id === cost.employeeId);
         if (!emp) return null;
@@ -339,6 +386,7 @@ export const SPTTemplate: React.FC<Props> = ({ assignment, employees, skpd, offi
 
   return (
     <div className="print-page bg-white font-['Tahoma'] text-black leading-tight text-[11pt]">
+      <style dangerouslySetInnerHTML={{ __html: PRINT_STYLES }} />
       <Header skpd={skpd} />
       <div className="text-center mb-6">
         <h2 className="text-[12pt] font-bold underline uppercase decoration-1 underline-offset-2">Surat Tugas</h2>
@@ -435,7 +483,7 @@ export const SPPDFrontTemplate: React.FC<Props> = ({ assignment, employees, skpd
         employeeIds.map((empId) => {
           const emp = employees.find(e => e.id === empId);
           return (
-            <div key={empId} className="print-page bg-white font-['Tahoma'] text-black leading-tight text-[11pt] border border-black relative mb-8 last:mb-0 break-after-page">
+            <div key={empId} className="print-page bg-white font-['Tahoma'] text-black leading-tight text-[11pt] relative break-after-page">
               <Header skpd={skpd} />
               <div className="flex justify-end mb-2">
                 <div className="w-1/2 text-[10pt]">
@@ -489,7 +537,7 @@ export const SPPDBackTemplate: React.FC<Props> = ({ assignment, skpd, officials,
         <div className="p-8 text-center text-slate-400 italic">Tidak ada pegawai yang dipilih.</div>
       ) : (
         employeeIds.map((empId) => (
-          <div key={empId} className="print-page bg-white font-['Tahoma'] text-[10pt] border border-black relative leading-tight text-black mb-8 last:mb-0 break-after-page">
+          <div key={empId} className="print-page bg-white font-['Tahoma'] text-[10pt] relative leading-tight text-black break-after-page">
             <div className="flex justify-end mt-4 px-2">
               <div className="w-[340px] space-y-0.5 mb-2">
                 <div className="grid grid-cols-[100px_10px_1fr]"><span>SPPD No.</span><span>:</span><span className="font-bold">{assignment.assignmentNumber}</span></div>
@@ -587,6 +635,7 @@ export const PejabatTujuanTemplate: React.FC<Props> = ({ assignment, destination
 
   return (
     <div className="print-page bg-transparent font-['Tahoma'] text-[10pt] relative leading-tight">
+      <style dangerouslySetInnerHTML={{ __html: PRINT_STYLES }} />
       <div className="space-y-0 mt-[165px]">
         {['II.', 'III.', 'IV.'].map((label, idx) => {
           const destOff = getDestOfficial(idx);
@@ -639,6 +688,7 @@ export const DaftarPenerimaanTemplate: React.FC<Props> = ({ assignment, employee
 
   return (
     <div className="landscape-page bg-white font-['Tahoma'] text-[9pt] leading-tight p-8 text-black">
+      <style dangerouslySetInnerHTML={{ __html: PRINT_STYLES }} />
        <div className="text-center mb-6 mx-auto max-w-[220mm]">
          <p className="font-normal text-[10pt]">
            Daftar Penerimaan Uang Perjalanan Dinas ke <span className="font-bold">{assignment.destination}</span> Dalam rangka <span className="font-bold">{cleanPurpose}</span> selama <span className="font-bold">{assignment.durationDays || 0} ({numberToWords(assignment.durationDays || 0)}) hari</span> dari tanggal <span className="font-bold">{formatDateID(assignment.startDate)}</span> s.d <span className="font-bold">{formatDateID(assignment.endDate)}</span> sesuai Surat Perintah Tugas {kepala.jabatan} {skpd.namaSkpd} Nomor : <span className="font-bold">{assignment.assignmentNumber}</span> tanggal <span className="font-bold">{formatDateID(assignment.signDate)}</span>

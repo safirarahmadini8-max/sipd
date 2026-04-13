@@ -344,7 +344,7 @@ const App: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="p-4 md:p-12 flex justify-center">
+        <div className="p-4 md:p-12 flex flex-col items-center print:block print:p-0 print:m-0">
           {printType === PrintType.SPT && <SPTTemplate {...props} />}
           {printType === PrintType.SPPD_FRONT && <SPPDFrontTemplate {...props} />}
           {printType === PrintType.SPPD_BACK && <SPPDBackTemplate {...props} />}
