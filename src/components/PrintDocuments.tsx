@@ -414,45 +414,51 @@ export const SPTTemplate: React.FC<Props> = ({ assignment, employees, skpd, offi
 
 export const SPPDFrontTemplate: React.FC<Props> = ({ assignment, employees, skpd, officials }) => {
   const { kepala } = getSignatories(assignment, officials, skpd);
-  const firstEmp = employees.find(e => e.id === assignment.selectedEmployeeIds[0]);
 
   return (
-    <div className="print-page bg-white font-['Tahoma'] text-black leading-tight text-[11pt] border border-black relative">
-      <Header skpd={skpd} />
-      <div className="flex justify-end mb-2">
-        <div className="w-1/2 text-[10pt]">
-          <div className="grid grid-cols-[80px_10px_1fr]"><span>Lembar Ke</span><span>:</span><span></span></div>
-          <div className="grid grid-cols-[80px_10px_1fr]"><span>Kode No</span><span>:</span><span></span></div>
-          <div className="grid grid-cols-[80px_10px_1fr]"><span>Nomor</span><span>:</span><span>{assignment.assignmentNumber}</span></div>
-        </div>
-      </div>
-      <div className="text-center mb-4"><h2 className="text-[13pt] font-bold underline uppercase">SURAT PERJALANAN DINAS (SPD)</h2></div>
-      <table className="w-full border-collapse border border-black text-[11pt]">
-        <tbody>
-          <tr><td className="border border-black p-1 w-8 text-center align-top">1.</td><td className="border border-black p-1 w-1/2 align-top">Pejabat Pembuat Komitmen</td><td className="border border-black p-1 align-top">{kepala.jabatan}</td></tr>
-          <tr><td className="border border-black p-1 text-center align-top">2.</td><td className="border border-black p-1 align-top">Nama pegawai yang diperintah</td><td className="border border-black p-1 font-bold align-top">{firstEmp?.name}</td></tr>
-          <tr><td className="border border-black p-1 text-center align-top">3.</td><td className="border border-black p-1 align-top">a. Pangkat dan Golongan<br/>b. Jabatan / Instansi<br/>c. Tingkat Biaya Perjalanan Dinas</td><td className="border border-black p-1 align-top">a. {firstEmp?.pangkatGol}<br/>b. {firstEmp?.jabatan}<br/>c. </td></tr>
-          <tr><td className="border border-black p-1 text-center align-top">4.</td><td className="border border-black p-1 align-top">Maksud Perjalanan Dinas</td><td className="border border-black p-1 align-top">{assignment.purpose}</td></tr>
-          <tr><td className="border border-black p-1 text-center align-top">5.</td><td className="border border-black p-1 align-top">Alat angkut yang dipergunakan</td><td className="border border-black p-1 align-top">{assignment.transportation}</td></tr>
-          <tr><td className="border border-black p-1 text-center align-top">6.</td><td className="border border-black p-1 align-top">a. Tempat berangkat<br/>b. Tempat tujuan</td><td className="border border-black p-1 align-top">a. {assignment.origin}<br/>b. {assignment.destination}</td></tr>
-          <tr><td className="border border-black p-1 text-center align-top">7.</td><td className="border border-black p-1 align-top">a. Lamanya Perjalanan Dinas<br/>b. Tanggal berangkat<br/>c. Tanggal harus kembali/tiba di tempat baru</td><td className="border border-black p-1 align-top">a. {assignment.durationDays} ( {numberToWords(assignment.durationDays)} ) Hari<br/>b. {formatDateID(assignment.startDate)}<br/>c. {formatDateID(assignment.endDate)}</td></tr>
-          <tr><td className="border border-black p-1 text-center align-top">8.</td><td className="border border-black p-1 align-top">Pengikut : Nama</td><td className="border border-black p-1 align-top">{assignment.selectedEmployeeIds.slice(1).map((id, idx) => (<div key={id}>{idx + 1}. {employees.find(e => e.id === id)?.name}</div>))}</td></tr>
-          <tr><td className="border border-black p-1 text-center align-top">9.</td><td className="border border-black p-1 align-top">Pembebanan Anggaran<br/>a. Instansi<br/>b. Akun</td><td className="border border-black p-1 align-top"><br/>a. {skpd.namaSkpd}<br/>b. {assignment.subActivityCode}</td></tr>
-          <tr><td className="border border-black p-1 text-center align-top">10.</td><td className="border border-black p-1 align-top">Keterangan lain-lain</td><td className="border border-black p-1 align-top"></td></tr>
-        </tbody>
-      </table>
-      <div className="mt-8 grid grid-cols-2 text-[11pt]">
-        <div></div>
-        <div className="text-left pl-12">
-          <p>Dikeluarkan di : {skpd.lokasi || 'Mataram'}</p>
-          <p className="mb-4">Pada Tanggal : {formatDateID(assignment.signDate)}</p>
-          <div className="min-h-[50px]"><p className="font-bold uppercase leading-tight">{kepala.jabatan}</p></div>
-          <div className="h-16"></div>
-          <p className="font-bold underline uppercase">{kepala.name}</p>
-          <p>NIP. {kepala.nip}</p>
-        </div>
-      </div>
-    </div>
+    <>
+      {assignment.selectedEmployeeIds.map((empId) => {
+        const emp = employees.find(e => e.id === empId);
+        return (
+          <div key={empId} className="print-page bg-white font-['Tahoma'] text-black leading-tight text-[11pt] border border-black relative mb-8 last:mb-0">
+            <Header skpd={skpd} />
+            <div className="flex justify-end mb-2">
+              <div className="w-1/2 text-[10pt]">
+                <div className="grid grid-cols-[80px_10px_1fr]"><span>Lembar Ke</span><span>:</span><span></span></div>
+                <div className="grid grid-cols-[80px_10px_1fr]"><span>Kode No</span><span>:</span><span></span></div>
+                <div className="grid grid-cols-[80px_10px_1fr]"><span>Nomor</span><span>:</span><span>{assignment.assignmentNumber}</span></div>
+              </div>
+            </div>
+            <div className="text-center mb-4"><h2 className="text-[13pt] font-bold underline uppercase">SURAT PERJALANAN DINAS (SPD)</h2></div>
+            <table className="w-full border-collapse border border-black text-[11pt]">
+              <tbody>
+                <tr><td className="border border-black p-1 w-8 text-center align-top">1.</td><td className="border border-black p-1 w-1/2 align-top">Pejabat Pembuat Komitmen</td><td className="border border-black p-1 align-top">{kepala.jabatan}</td></tr>
+                <tr><td className="border border-black p-1 text-center align-top">2.</td><td className="border border-black p-1 align-top">Nama pegawai yang diperintah</td><td className="border border-black p-1 font-bold align-top">{emp?.name}</td></tr>
+                <tr><td className="border border-black p-1 text-center align-top">3.</td><td className="border border-black p-1 align-top">a. Pangkat dan Golongan<br/>b. Jabatan / Instansi<br/>c. Tingkat Biaya Perjalanan Dinas</td><td className="border border-black p-1 align-top">a. {emp?.pangkatGol}<br/>b. {emp?.jabatan}<br/>c. </td></tr>
+                <tr><td className="border border-black p-1 text-center align-top">4.</td><td className="border border-black p-1 align-top">Maksud Perjalanan Dinas</td><td className="border border-black p-1 align-top">{assignment.purpose}</td></tr>
+                <tr><td className="border border-black p-1 text-center align-top">5.</td><td className="border border-black p-1 align-top">Alat angkut yang dipergunakan</td><td className="border border-black p-1 align-top">{assignment.transportation}</td></tr>
+                <tr><td className="border border-black p-1 text-center align-top">6.</td><td className="border border-black p-1 align-top">a. Tempat berangkat<br/>b. Tempat tujuan</td><td className="border border-black p-1 align-top">a. {assignment.origin}<br/>b. {assignment.destination}</td></tr>
+                <tr><td className="border border-black p-1 text-center align-top">7.</td><td className="border border-black p-1 align-top">a. Lamanya Perjalanan Dinas<br/>b. Tanggal berangkat<br/>c. Tanggal harus kembali/tiba di tempat baru</td><td className="border border-black p-1 align-top">a. {assignment.durationDays} ( {numberToWords(assignment.durationDays)} ) Hari<br/>b. {formatDateID(assignment.startDate)}<br/>c. {formatDateID(assignment.endDate)}</td></tr>
+                <tr><td className="border border-black p-1 text-center align-top">8.</td><td className="border border-black p-1 align-top">Pengikut : Nama</td><td className="border border-black p-1 align-top"></td></tr>
+                <tr><td className="border border-black p-1 text-center align-top">9.</td><td className="border border-black p-1 align-top">Pembebanan Anggaran<br/>a. Instansi<br/>b. Akun</td><td className="border border-black p-1 align-top"><br/>a. {skpd.namaSkpd}<br/>b. {assignment.subActivityCode}</td></tr>
+                <tr><td className="border border-black p-1 text-center align-top">10.</td><td className="border border-black p-1 align-top">Keterangan lain-lain</td><td className="border border-black p-1 align-top"></td></tr>
+              </tbody>
+            </table>
+            <div className="mt-8 grid grid-cols-2 text-[11pt]">
+              <div></div>
+              <div className="text-left pl-12">
+                <p>Dikeluarkan di : {skpd.lokasi || 'Mataram'}</p>
+                <p className="mb-4">Pada Tanggal : {formatDateID(assignment.signDate)}</p>
+                <div className="min-h-[50px]"><p className="font-bold uppercase leading-tight">{kepala.jabatan}</p></div>
+                <div className="h-16"></div>
+                <p className="font-bold underline uppercase">{kepala.name}</p>
+                <p>NIP. {kepala.nip}</p>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </>
   );
 };
 
@@ -460,92 +466,96 @@ export const SPPDBackTemplate: React.FC<Props> = ({ assignment, skpd, officials,
   const { kepala, pptk } = getSignatories(assignment, officials, skpd);
   
   return (
-    <div className="print-page bg-white font-['Tahoma'] text-[10pt] border border-black relative leading-tight text-black">
-      <div className="flex justify-end mt-4 px-2">
-        <div className="w-[340px] space-y-0.5 mb-2">
-          <div className="grid grid-cols-[100px_10px_1fr]"><span>SPPD No.</span><span>:</span><span className="font-bold">{assignment.assignmentNumber}</span></div>
-          <div className="grid grid-cols-[100px_10px_1fr]"><span>Berangkat dari</span><span>:</span><span>{assignment.origin}</span></div>
-          <div className="grid grid-cols-[100px_10px_1fr]"><span>Pada tanggal</span><span>:</span><span>{formatDateID(assignment.startDate)}</span></div>
-          <div className="grid grid-cols-[100px_10px_1fr]"><span>Ke</span><span>:</span><span>{assignment.destination}</span></div>
-          
-          <div className="pt-6 text-center">
-            <p className="font-bold uppercase text-[9pt] leading-tight mb-14">{pptk.jabatan}</p>
-            <p className="font-bold underline uppercase text-[10pt] tracking-tight">{pptk.name}</p>
-            <p className="text-[9pt]">NIP. {pptk.nip}</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-0 border-t border-black">
-        {['II.', 'III.', 'IV.'].map((label, idx) => {
-          return (
-            <div key={label} className={`grid grid-cols-2 border-b border-black ${BLOCK_STYLE.minHeight}`}>
-              {/* Sisi Kiri (Tiba di) */}
-              <div className="border-r border-black p-2 flex flex-col h-full">
-                <div className="grid grid-cols-[30px_95px_10px_1fr] gap-y-0.5">
-                  <span className="font-bold">{label}</span><span>Tiba di</span><span>:</span><span>{idx === 0 ? assignment.destination : ''}</span>
-                  <span></span><span>Pada tanggal</span><span>:</span><span>{idx === 0 ? formatDateID(assignment.startDate) : ''}</span>
-                  <span></span><span className="font-bold">Kepala</span><span className="font-bold">:</span><span></span>
-                </div>
-                
-                <div className={`flex-1 flex ${BLOCK_STYLE.paddingTop} items-start`}>
-                   <div className="flex-1 text-center">
-                     {/* Data Pejabat Tujuan akan dicetak lewat Overlay TTD TUJUAN */}
-                   </div>
-                </div>
-              </div>
-
-              {/* Sisi Kanan (Berangkat dari) */}
-              <div className="p-2 flex flex-col h-full">
-                <div className="grid grid-cols-[95px_10px_1fr] gap-y-0.5">
-                  <span>Berangkat dari</span><span>:</span><span>{idx === 0 ? assignment.destination : ''}</span>
-                  <span>Ke</span><span>:</span><span>{idx === 0 ? (skpd.lokasi || 'Mataram') : ''}</span>
-                  <span>Pada tanggal</span><span>:</span><span>{idx === 0 ? formatDateID(assignment.endDate) : ''}</span>
-                  <span className="font-bold">Kepala</span><span className="font-bold">:</span><span></span>
-                </div>
-
-                <div className={`flex-1 flex ${BLOCK_STYLE.paddingTop} items-start`}>
-                   <div className="flex-1 text-center">
-                     {/* Data Pejabat Tujuan akan dicetak lewat Overlay TTD TUJUAN */}
-                   </div>
-                </div>
+    <>
+      {assignment.selectedEmployeeIds.map((empId) => (
+        <div key={empId} className="print-page bg-white font-['Tahoma'] text-[10pt] border border-black relative leading-tight text-black mb-8 last:mb-0">
+          <div className="flex justify-end mt-4 px-2">
+            <div className="w-[340px] space-y-0.5 mb-2">
+              <div className="grid grid-cols-[100px_10px_1fr]"><span>SPPD No.</span><span>:</span><span className="font-bold">{assignment.assignmentNumber}</span></div>
+              <div className="grid grid-cols-[100px_10px_1fr]"><span>Berangkat dari</span><span>:</span><span>{assignment.origin}</span></div>
+              <div className="grid grid-cols-[100px_10px_1fr]"><span>Pada tanggal</span><span>:</span><span>{formatDateID(assignment.startDate)}</span></div>
+              <div className="grid grid-cols-[100px_10px_1fr]"><span>Ke</span><span>:</span><span>{assignment.destination}</span></div>
+              
+              <div className="pt-6 text-center">
+                <p className="font-bold uppercase text-[9pt] leading-tight mb-14">{pptk.jabatan}</p>
+                <p className="font-bold underline uppercase text-[10pt] tracking-tight">{pptk.name}</p>
+                <p className="text-[9pt]">NIP. {pptk.nip}</p>
               </div>
             </div>
-          );
-        })}
-      </div>
+          </div>
 
-      <div className="mt-2 px-2 space-y-1">
-        <div className="border-b border-black pb-1">
-          <p className="text-justify text-[8.5pt] leading-relaxed">
-            V. Telah diperiksa, with keterangan bahwa perjalanan tersebut di atas benar dilakukan atas perintahnya dan semata-mata untuk kepentingan jabatan dalam waktu yang sesingkat-singkatnya.
-          </p>
-        </div>
-        
-        <div className="grid grid-cols-[120px_1fr] gap-1 items-center">
-          <span className="font-bold text-[8.5pt] whitespace-nowrap">VI. CATATAN LAIN-LAIN</span>
-          <div className="border-b border-black w-full h-px"></div>
-        </div>
+          <div className="space-y-0 border-t border-black">
+            {['II.', 'III.', 'IV.'].map((label, idx) => {
+              return (
+                <div key={label} className={`grid grid-cols-2 border-b border-black ${BLOCK_STYLE.minHeight}`}>
+                  {/* Sisi Kiri (Tiba di) */}
+                  <div className="border-r border-black p-2 flex flex-col h-full">
+                    <div className="grid grid-cols-[30px_95px_10px_1fr] gap-y-0.5">
+                      <span className="font-bold">{label}</span><span>Tiba di</span><span>:</span><span>{idx === 0 ? assignment.destination : ''}</span>
+                      <span></span><span>Pada tanggal</span><span>:</span><span>{idx === 0 ? formatDateID(assignment.startDate) : ''}</span>
+                      <span></span><span className="font-bold">Kepala</span><span className="font-bold">:</span><span></span>
+                    </div>
+                    
+                    <div className={`flex-1 flex ${BLOCK_STYLE.paddingTop} items-start`}>
+                       <div className="flex-1 text-center">
+                         {/* Data Pejabat Tujuan akan dicetak lewat Overlay TTD TUJUAN */}
+                       </div>
+                    </div>
+                  </div>
 
-        <div className="border-b border-black pb-1">
-          <p className="text-justify text-[8pt] leading-snug">
-            VII. Pejabat yang berwenang menerbitkan SPPD, pegawai yang melakukan perjalanan dinas, para pejabat yang mengesahkan tanggal berangkat / tiba serta Bendaharawan bertanggung jawab berdasarkan peraturan-peraturan keuangan negara apabila negara mendapat rugi akibat kesalahan, kealpaannya.
-          </p>
-        </div>
+                  {/* Sisi Kanan (Berangkat dari) */}
+                  <div className="p-2 flex flex-col h-full">
+                    <div className="grid grid-cols-[95px_10px_1fr] gap-y-0.5">
+                      <span>Berangkat dari</span><span>:</span><span>{idx === 0 ? assignment.destination : ''}</span>
+                      <span>Ke</span><span>:</span><span>{idx === 0 ? (skpd.lokasi || 'Mataram') : ''}</span>
+                      <span>Pada tanggal</span><span>:</span><span>{idx === 0 ? formatDateID(assignment.endDate) : ''}</span>
+                      <span className="font-bold">Kepala</span><span className="font-bold">:</span><span></span>
+                    </div>
 
-        <div className="grid grid-cols-2 mt-2">
-          <div></div>
-          <div className="text-center">
-            <div className="min-h-[40px]">
-              <p className="font-bold uppercase leading-tight text-[9.5pt]">{kepala.jabatan}</p>
+                    <div className={`flex-1 flex ${BLOCK_STYLE.paddingTop} items-start`}>
+                       <div className="flex-1 text-center">
+                         {/* Data Pejabat Tujuan akan dicetak lewat Overlay TTD TUJUAN */}
+                       </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-2 px-2 space-y-1">
+            <div className="border-b border-black pb-1">
+              <p className="text-justify text-[8.5pt] leading-relaxed">
+                V. Telah diperiksa, with keterangan bahwa perjalanan tersebut di atas benar dilakukan atas perintahnya dan semata-mata untuk kepentingan jabatan dalam waktu yang sesingkat-singkatnya.
+              </p>
             </div>
-            <div className="h-16"></div>
-            <p className="font-bold underline uppercase text-[10.5pt]">{kepala.name}</p>
-            <p className="text-[9.5pt]">NIP. {kepala.nip}</p>
+            
+            <div className="grid grid-cols-[120px_1fr] gap-1 items-center">
+              <span className="font-bold text-[8.5pt] whitespace-nowrap">VI. CATATAN LAIN-LAIN</span>
+              <div className="border-b border-black w-full h-px"></div>
+            </div>
+
+            <div className="border-b border-black pb-1">
+              <p className="text-justify text-[8pt] leading-snug">
+                VII. Pejabat yang berwenang menerbitkan SPPD, pegawai yang melakukan perjalanan dinas, para pejabat yang mengesahkan tanggal berangkat / tiba serta Bendaharawan bertanggung jawab berdasarkan peraturan-peraturan keuangan negara apabila negara mendapat rugi akibat kesalahan, kealpaannya.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 mt-2">
+              <div></div>
+              <div className="text-center">
+                <div className="min-h-[40px]">
+                  <p className="font-bold uppercase leading-tight text-[9.5pt]">{kepala.jabatan}</p>
+                </div>
+                <div className="h-16"></div>
+                <p className="font-bold underline uppercase text-[10.5pt]">{kepala.name}</p>
+                <p className="text-[9.5pt]">NIP. {kepala.nip}</p>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
+      ))}
+    </>
   );
 };
 
