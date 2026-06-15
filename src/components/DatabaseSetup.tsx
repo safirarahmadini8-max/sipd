@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { 
   Database, Link, Key, CheckCircle, ShieldAlert, 
-  FileSpreadsheet, LogIn, PlusCircle, Sparkles, RefreshCw, AlertCircle
+  FileSpreadsheet, LogIn, PlusCircle, Sparkles, RefreshCw, AlertCircle,
+  Copy, Check, HelpCircle
 } from 'lucide-react';
 import { LOGO_NTB } from '../constants';
 import { googleSignIn, SheetsDbClient } from '../lib/dbClient';
@@ -22,6 +23,34 @@ export const DatabaseSetup: React.FC<Props> = ({ onConnect, onConnectSheets }) =
   const [spreadsheetId, setSpreadsheetId] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [errorHand, setErrorHand] = useState<string | null>(null);
+  const [isUnauthorizedDomain, setIsUnauthorizedDomain] = useState(false);
+  const [isPopupClosed, setIsPopupClosed] = useState(false);
+  const [copiedDomain, setCopiedDomain] = useState<string | null>(null);
+
+  const getAuthDomains = () => {
+    const preCalculated = [
+      'ais-dev-b5wwrz2ccvsksbp4uzpayv-63245492416.asia-east1.run.app',
+      'ais-pre-b5wwrz2ccvsksbp4uzpayv-63245492416.asia-east1.run.app',
+      'localhost',
+    ];
+
+    const currentHost = window.location.hostname;
+    const list = [...preCalculated];
+    
+    if (currentHost && !list.includes(currentHost)) {
+      list.push(currentHost);
+    }
+
+    if (currentHost && currentHost.includes('ais-dev-')) {
+      const partner = currentHost.replace('ais-dev-', 'ais-pre-');
+      if (!list.includes(partner)) list.push(partner);
+    } else if (currentHost && currentHost.includes('ais-pre-')) {
+      const partner = currentHost.replace('ais-pre-', 'ais-dev-');
+      if (!list.includes(partner)) list.push(partner);
+    }
+
+    return list;
+  };
 
   const handleSupabaseSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +61,8 @@ export const DatabaseSetup: React.FC<Props> = ({ onConnect, onConnectSheets }) =
 
   const handleGoogleSignIn = async () => {
     setErrorHand(null);
+    setIsUnauthorizedDomain(false);
+    setIsPopupClosed(false);
     try {
       const res = await googleSignIn();
       if (res) {
@@ -45,7 +76,26 @@ export const DatabaseSetup: React.FC<Props> = ({ onConnect, onConnectSheets }) =
         }
       }
     } catch (err: any) {
-      setErrorHand(err.message || 'Gagal login dengan Google.');
+      console.error('Sign-in Error in setup:', err);
+      const isAuthDomainErr = 
+        String(err.code || '').includes('unauthorized-domain') || 
+        String(err.message || '').includes('unauthorized-domain') ||
+        String(err.code || '').includes('unauthorized') ||
+        String(err.message || '').includes('unauthorized');
+      
+      const isPopupClosedErr = 
+        String(err.code || '').includes('popup-closed-by-user') || 
+        String(err.message || '').includes('popup-closed-by-user');
+      
+      if (isAuthDomainErr) {
+        setIsUnauthorizedDomain(true);
+        setErrorHand('Firebase: Error (auth/unauthorized-domain). Proyek Firebase Anda belum memberikan izin akses untuk domain aplikasi ini.');
+      } else if (isPopupClosedErr) {
+        setIsPopupClosed(true);
+        setErrorHand('Firebase: Error (auth/popup-closed-by-user). Jendela pratinjau login ditutup sebelum selesai, atau diblokir oleh penjelajah web (browser) Anda.');
+      } else {
+        setErrorHand(err.message || 'Gagal login dengan Google.');
+      }
     }
   };
 
@@ -108,9 +158,135 @@ export const DatabaseSetup: React.FC<Props> = ({ onConnect, onConnectSheets }) =
         </div>
 
         {errorHand && (
-          <div className="mb-4 bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs p-3.5 rounded-xl flex items-start gap-2.5 animate-in slide-in-from-top duration-300">
-            <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
-            <span>{errorHand}</span>
+          <div className="space-y-4 mb-5">
+            <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs p-4 rounded-2xl flex items-start gap-2.5 animate-in slide-in-from-top duration-300">
+              <AlertCircle size={16} className="mt-0.5 flex-shrink-0 text-rose-400" />
+              <div className="leading-relaxed">
+                <span className="font-black text-rose-300 block mb-1 uppercase tracking-wider text-[10px]">Pemberitahuan Error:</span>
+                {errorHand}
+              </div>
+            </div>
+
+            {isUnauthorizedDomain && (
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 text-[11px] text-slate-300 space-y-3.5 animate-in fade-in duration-300">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-800">
+                  <HelpCircle size={16} className="text-amber-400 animate-pulse" />
+                  <span className="font-black text-amber-300 uppercase tracking-tight text-[10px]">Panduan authorized-domain Firebase</span>
+                </div>
+
+                <p className="text-slate-400 leading-relaxed">
+                  Agar Google mengizinkan proses masuk dari web ini, silakan daftarkan domain berikut di Firebase Console Anda:
+                </p>
+
+                <div className="space-y-2 pl-0.5">
+                  <div className="flex gap-2">
+                    <span className="font-black text-slate-200 bg-slate-800 w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] flex-shrink-0">1</span>
+                    <p className="text-slate-400">
+                      Buka{' '}
+                      <a 
+                        href="https://console.firebase.google.com/" 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="text-blue-400 hover:underline font-bold"
+                      >
+                        Firebase Console
+                      </a>
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <span className="font-black text-slate-200 bg-slate-800 w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] flex-shrink-0">2</span>
+                    <p className="text-slate-400">
+                      Masuk ke menu <span className="text-slate-200 font-bold">Authentication</span> &rarr; <span className="text-slate-200 font-bold">Settings</span> &rarr; <span className="text-slate-200 font-bold">Authorized domains</span>.
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2 pt-1 flex-col">
+                    <div className="flex gap-2">
+                      <span className="font-black text-slate-200 bg-slate-800 w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] flex-shrink-0">3</span>
+                      <p className="text-slate-400 font-bold">Salin & Tambahkan Domain ini:</p>
+                    </div>
+                    
+                    <div className="space-y-1.5 mt-1">
+                      {getAuthDomains().map(dom => (
+                        <div key={dom} className="flex items-center justify-between bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 font-mono text-[9px] text-slate-300 shadow-inner">
+                          <span className="truncate pr-2">{dom}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(dom);
+                              setCopiedDomain(dom);
+                              setTimeout(() => setCopiedDomain(null), 2500);
+                            }}
+                            className="text-slate-500 hover:text-white flex items-center gap-1 transition flex-shrink-0"
+                          >
+                            {copiedDomain === dom ? (
+                              <span className="text-emerald-400 font-sans font-bold">Tersalin!</span>
+                            ) : (
+                              <span className="text-slate-500 hover:text-slate-300 font-sans font-bold flex items-center gap-1">
+                                <Copy size={11} /> Salin
+                              </span>
+                            )}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-2 border-t border-slate-850">
+                    <span className="font-black text-slate-200 bg-slate-800 w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] flex-shrink-0">4</span>
+                    <p className="text-slate-400 leading-snug">
+                      Klik simpan di Firebase, lalu silakan coba klik <span className="text-emerald-400 font-bold">Sign In with Google</span> kembali.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {isPopupClosed && (
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 text-[11px] text-slate-300 space-y-3.5 animate-in fade-in duration-300">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-800">
+                  <HelpCircle size={16} className="text-amber-400 animate-pulse" />
+                  <span className="font-black text-amber-300 uppercase tracking-tight text-[10px]">Panduan Mengatasi Pop-up Pemblokiran</span>
+                </div>
+
+                <p className="text-slate-400 leading-relaxed">
+                  Layanan login Google memerlukan pembukaan jendela pop-up. Silakan lakukan langkah-langkah berikut:
+                </p>
+
+                <div className="space-y-3.5 pl-0.5">
+                  <div className="flex gap-2.5">
+                    <span className="font-black text-slate-200 bg-slate-800 w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] flex-shrink-0">1</span>
+                    <div>
+                      <p className="font-bold text-slate-300">Buka Aplikasi di Tab Baru (Sangat Disarankan)</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">
+                        Iframe di dalam boks AI Studio sering memblokir pop-up Google. Klik tombol **"Open in a new tab" / "Buka di tab baru"** (di ujung kanan atas bilah AI Studio Anda) untuk login secara penuh dan lancar.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2.5">
+                    <span className="font-black text-slate-200 bg-slate-800 w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] flex-shrink-0">2</span>
+                    <div>
+                      <p className="font-bold text-slate-300">Izinkan Jendela Pop-up</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">
+                        Jika browser meluncurkan filter pemblokir pop-up (ikon lingkaran bertanda silang pada ujung bilah URL browser Anda), silakan klik dan pilih **"Always allow popups"** (Selalu izinkan pop-up).
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2.5">
+                    <span className="font-black text-slate-200 bg-slate-800 w-4.5 h-4.5 rounded-full flex items-center justify-center text-[9px] flex-shrink-0">3</span>
+                    <div>
+                      <p className="font-bold text-slate-300">Biarkan Jendela Selesai Memuat</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">
+                        Pastikan jendela login Google kecil yang muncul tidak ditutup secara manual sebelum perizinan akun tuntas dilakukan.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

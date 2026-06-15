@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   RefreshCw, CloudLightning, Sparkles, FileSpreadsheet, ArrowLeftRight, 
   ArrowUpFromLine, ArrowDownToLine, CheckCircle, 
-  AlertTriangle, Play, HelpCircle, Key, Link2, Info, Loader2
+  AlertTriangle, Play, HelpCircle, Key, Link2, Info, Loader2, Copy, Check
 } from 'lucide-react';
 import { 
   initAuth, googleSignIn, googleSignOut,
@@ -47,6 +47,9 @@ export const SyncView: React.FC<Props> = ({
   const [syncLogs, setSyncLogs] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successInfo, setSuccessInfo] = useState<string | null>(null);
+  const [isUnauthorizedDomain, setIsUnauthorizedDomain] = useState(false);
+  const [isPopupClosed, setIsPopupClosed] = useState(false);
+  const [copiedDomain, setCopiedDomain] = useState<string | null>(null);
 
   // Load Google Auth and Sheet Settings
   useEffect(() => {
@@ -68,8 +71,37 @@ export const SyncView: React.FC<Props> = ({
     };
   }, []);
 
+  const getAuthDomains = () => {
+    // Exact domains of the workspace to prevent sandbox iframe lookup failures
+    const preCalculated = [
+      'ais-dev-b5wwrz2ccvsksbp4uzpayv-63245492416.asia-east1.run.app',
+      'ais-pre-b5wwrz2ccvsksbp4uzpayv-63245492416.asia-east1.run.app',
+      'localhost',
+    ];
+
+    const currentHost = window.location.hostname;
+    const list = [...preCalculated];
+    
+    if (currentHost && !list.includes(currentHost)) {
+      list.push(currentHost);
+    }
+
+    // Auto-compute dev/pre domain pair dynamically as well
+    if (currentHost && currentHost.includes('ais-dev-')) {
+      const partner = currentHost.replace('ais-dev-', 'ais-pre-');
+      if (!list.includes(partner)) list.push(partner);
+    } else if (currentHost && currentHost.includes('ais-pre-')) {
+      const partner = currentHost.replace('ais-pre-', 'ais-dev-');
+      if (!list.includes(partner)) list.push(partner);
+    }
+
+    return list;
+  };
+
   const handleGoogleSignIn = async () => {
     setErrorMessage(null);
+    setIsUnauthorizedDomain(false);
+    setIsPopupClosed(false);
     setIsSigningIn(true);
     try {
       const res = await googleSignIn();
@@ -82,7 +114,26 @@ export const SyncView: React.FC<Props> = ({
         }
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Gagal masuk akun Google.');
+      console.error('Sign-in Error detail:', err);
+      const isAuthDomainErr = 
+        String(err.code || '').includes('unauthorized-domain') || 
+        String(err.message || '').includes('unauthorized-domain') ||
+        String(err.code || '').includes('unauthorized') ||
+        String(err.message || '').includes('unauthorized');
+      
+      const isPopupClosedErr = 
+        String(err.code || '').includes('popup-closed-by-user') || 
+        String(err.message || '').includes('popup-closed-by-user');
+      
+      if (isAuthDomainErr) {
+        setIsUnauthorizedDomain(true);
+        setErrorMessage('Firebase: Error (auth/unauthorized-domain). Domain aplikasi ini belum terdaftar di daftar Authorized Domains (Domain Terotorisasi) pada Firebase Authentication milik proyek Anda.');
+      } else if (isPopupClosedErr) {
+        setIsPopupClosed(true);
+        setErrorMessage('Firebase: Error (auth/popup-closed-by-user). Jendela masuk Google ditutup sebelum login selesai atau diblokir oleh penjelajah web (browser) Anda.');
+      } else {
+        setErrorMessage(err.message || 'Gagal masuk akun Google.');
+      }
     } finally {
       setIsSigningIn(false);
     }
@@ -456,7 +507,146 @@ export const SyncView: React.FC<Props> = ({
       {errorMessage && (
         <div className="bg-red-50 border border-red-200 text-red-600 rounded-2xl p-4 text-xs italic flex items-start gap-2.5">
           <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
-          <span>{errorMessage}</span>
+          <span className="font-medium text-slate-700 leading-relaxed">
+            <span className="font-black text-red-600 block mb-1">Gagal Menghubungkan Google:</span>
+            {errorMessage}
+          </span>
+        </div>
+      )}
+
+      {/* Troubleshooting guide when auth/popup-closed-by-user occurs */}
+      {isPopupClosed && (
+        <div className="bg-amber-50 border border-amber-200 rounded-3xl p-6 text-xs text-slate-800 space-y-4 animate-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center gap-2.5 pb-2 border-b border-amber-200">
+            <HelpCircle size={20} className="text-amber-600 animate-pulse" />
+            <span className="font-black text-amber-900 text-sm uppercase tracking-tight">Cara Mengatasi Kendala Jendela Pop-up Login</span>
+          </div>
+
+          <p className="text-slate-600 font-medium leading-relaxed font-sans">
+            Proses Otentikasi Google memerlukan pembukaan jendela pop-up. Kendala ini biasanya terjadi jika Anda sedang membuka aplikasi di dalam **iFrame pratinjau (preview frame) AI Studio**, atau penjelajah web (browser) Anda memblokir jendela pop-up. Silakan ikuti langkah penanganan berikut:
+          </p>
+
+          <div className="space-y-4 pl-1 font-sans">
+            <div className="flex gap-3">
+              <span className="font-black text-amber-900 bg-amber-200/50 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px]">1</span>
+              <div>
+                <p className="font-bold text-slate-800">Buka Aplikasi di Tab Baru (Sangat Disarankan)</p>
+                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                  Iframe di dalam boks AI Studio membatasi pembukaan pop-up pihak ketiga demi keamanan. Silakan klik tombol **"Open in a new tab" / "Buka di tab baru"** (di pojok kanan atas layar AI Studio atau gunakan URL pratinjau langsung Anda) untuk menjalankan aplikasi secara penuh di luar iFrame.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <span className="font-black text-amber-900 bg-amber-200/50 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px]">2</span>
+              <div>
+                <p className="font-bold text-slate-800">Matikan Pemblokir Pop-up (Popup Blocker)</p>
+                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                  Periksa bagian ujung kanan bilah alamat URL (address bar) browser Anda. Jika terdapat ikon bertanda silang pemblokir pop-up, klik ikon tersebut dan pilih <span className="font-bold text-slate-700 bg-white border px-1 rounded">"Always allow popups"</span> (Selalu izinkan pop-up dari situs ini).
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <span className="font-black text-amber-900 bg-amber-200/50 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px]">3</span>
+              <div>
+                <p className="font-bold text-slate-800">Biarkan Jendela Google Selesai Memuat</p>
+                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                  Pastikan Anda tidak menutup jendela kecil Google Sign-In yang muncul secara manual sebelum pemilihan akun dan perizinan tuntas.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Troubleshooting guide when auth/unauthorized-domain occurs */}
+      {isUnauthorizedDomain && (
+        <div className="bg-amber-50 border border-amber-200 rounded-3xl p-6 text-xs text-slate-800 space-y-4 animate-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center gap-2.5 pb-2 border-b border-amber-200">
+            <HelpCircle size={20} className="text-amber-600 animate-pulse" />
+            <span className="font-black text-amber-900 text-sm uppercase tracking-tight">Panduan Mengatasi "unauthorized-domain" di Firebase</span>
+          </div>
+
+          <p className="text-slate-600 font-medium leading-relaxed">
+            Sistem autentikasi Google Proyek Anda mendeteksi bahwa domain website ini belum didaftarkan di setelan Authorized Domains pada Firebase Console Anda. Silakan tambahkan domain berikut agar Google mengizinkan proses login:
+          </p>
+
+          <div className="space-y-4 pl-1">
+            <div className="flex gap-3">
+              <span className="font-black text-amber-900 bg-amber-200/50 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px]">1</span>
+              <div>
+                <p className="font-bold text-slate-800">Buka Firebase Console</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Klik tautan berikut untuk membuka proyek Firebase Anda:{' '}
+                  <a 
+                    href="https://console.firebase.google.com/" 
+                    target="_blank" 
+                    rel="noreferrer" 
+                    className="text-blue-600 hover:underline font-black inline-flex items-center gap-1 bg-white border border-slate-200 px-2 py-0.5 rounded-md shadow-sm"
+                  >
+                    Buka Firebase Console &rarr;
+                  </a>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <span className="font-black text-amber-900 bg-amber-200/50 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px]">2</span>
+              <div>
+                <p className="font-bold text-slate-800">Masuk ke Menu Authorized Domains</p>
+                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                  Pilih Proyek Anda &rarr; klik menu <span className="font-bold text-slate-800 bg-white px-1.5 py-0.5 rounded border border-amber-100 shadow-sm">Authentication</span> &rarr; klik tab halaman <span className="font-bold text-slate-800 bg-white px-1.5 py-0.5 rounded border border-amber-100 shadow-sm">Settings</span> &rarr; klik sub-menu <span className="font-bold text-slate-800 bg-white px-1.5 py-0.5 rounded border border-amber-100 shadow-sm">Authorized domains</span>.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <span className="font-black text-amber-900 bg-amber-200/50 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px]">3</span>
+              <div>
+                <p className="font-bold text-slate-800">Tambahkan Domain Berikut</p>
+                <p className="text-[11px] text-slate-500 mt-0.5 mb-2 leading-relaxed">
+                  Klik tombol <span className="font-bold text-slate-700">Add domain</span> (Tambahkan domain), lalu masukkan nilai domain berikut satu per satu:
+                </p>
+                <div className="space-y-2 mt-2">
+                  {getAuthDomains().map(dom => (
+                    <div key={dom} className="flex items-center justify-between bg-white border border-amber-150 rounded-xl px-4 py-2.5 font-mono text-[10px] text-slate-700 max-w-lg shadow-sm">
+                      <span className="truncate pr-4 font-bold text-slate-800">{dom}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(dom);
+                          setCopiedDomain(dom);
+                          setTimeout(() => setCopiedDomain(null), 2500);
+                        }}
+                        className="text-slate-400 hover:text-blue-600 flex items-center gap-1 flex-shrink-0 transition"
+                      >
+                        {copiedDomain === dom ? (
+                          <span className="text-[10px] text-emerald-600 font-sans font-black flex items-center gap-1.5">
+                            <CheckCircle size={13} className="text-emerald-500 animate-scale" /> Tersalin!
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-500 hover:text-slate-800 font-sans font-bold flex items-center gap-1">
+                            <Copy size={13} /> Salin Domain
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <span className="font-black text-amber-900 bg-amber-200/50 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px]">4</span>
+              <div>
+                <p className="font-bold text-slate-800">Muat Ulang Halaman & Hubungkan Kembali</p>
+                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                  Setelah menyimpan setelan domain di Firebase Console, klik tombol muat ulang halaman (refresh browser) atau coba hubungkan akun kembali dengan mengeklik tombol <span className="font-black text-emerald-700 bg-white border border-slate-200 px-1.5 py-0.5 rounded shadow-sm">Hubungkan Akun Google</span>.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

@@ -1,3 +1,8 @@
-"name": "Sistem Informasi Perjalanan Dinas (SIPD)",
-  "description": "Aplikasi manajemen administrasi perjalanan dinas untuk pengelolaan anggran dan dokumen perjaanan .",
-  "requestFramePermissions": []
+{
+  "name": "Sistem Informasi Perjalanan Dinas (SIPD)",
+  "description": "Aplikasi manajemen administrasi perjalanan dinas untuk pengelolaan anggaran dan dokumen perjalanan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
