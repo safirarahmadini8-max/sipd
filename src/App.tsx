@@ -2,6 +2,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { 
+  initAuth, googleSignIn, googleSignOut, 
+  SupabaseDbWrapper, GoogleSheetsDbWrapper, IDbClient 
+} from './lib/dbClient';
+import { 
   ViewMode, Employee, TravelAssignment, PrintType, 
   MasterCost, SubActivity, SKPDConfig, Official, TravelCost, DestinationOfficial 
 } from './types';
@@ -12,6 +16,7 @@ import { MasterDataForm } from './components/MasterDataForm';
 import { SKPDForm } from './components/SKPDForm';
 import { ReportView } from './components/ReportView';
 import { DatabaseSetup } from './components/DatabaseSetup';
+import { SyncView } from './components/SyncView';
 import { DestinationOfficialManager } from './components/DestinationOfficialManager';
 import { DestinationOfficialForm } from './components/DestinationOfficialForm';
 import { 
@@ -35,6 +40,8 @@ import { OFFICE_NAME, OFFICE_ADDRESS, HEAD_OF_OFFICE, TREASURER, LOGO_NTB } from
 
 const App: React.FC = () => {
   const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
+  const [dbClient, setDbClient] = useState<IDbClient | null>(null);
+  const [dbType, setDbType] = useState<'supabase' | 'sheets' | null>(null);
   const [dbConfigured, setDbConfigured] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.DASHBOARD);
   const [loading, setLoading] = useState(true);
@@ -123,105 +130,109 @@ const App: React.FC = () => {
   }, [subActivities, assignments]);
 
   useEffect(() => {
-    const savedUrl = localStorage.getItem('SB_URL');
-    const savedKey = localStorage.getItem('SB_KEY');
-    if (savedUrl && savedKey) {
-      const client = createClient(savedUrl, savedKey);
-      setSupabase(client);
-      setDbConfigured(true);
+    const savedDbType = localStorage.getItem('DB_TYPE');
+    
+    if (savedDbType === 'sheets') {
+      const savedSheetId = localStorage.getItem('GS_SPREADSHEET_ID');
+      if (savedSheetId) {
+        setDbType('sheets');
+        // Initialize auth listener
+        const unsubscribe = initAuth(
+          (user, token) => {
+            const client = new GoogleSheetsDbWrapper(savedSheetId, token);
+            setDbClient(client);
+            setDbConfigured(true);
+            setLoading(false);
+          },
+          () => {
+            setLoading(false);
+            setDbConfigured(false);
+          }
+        );
+        return () => {
+          if (typeof unsubscribe === 'function') unsubscribe();
+        };
+      } else {
+        setLoading(false);
+      }
     } else {
-      setLoading(false);
+      const savedUrl = localStorage.getItem('SB_URL');
+      const savedKey = localStorage.getItem('SB_KEY');
+      if (savedUrl && savedKey) {
+        const client = createClient(savedUrl, savedKey);
+        setSupabase(client);
+        setDbClient(new SupabaseDbWrapper(client));
+        setDbType('supabase');
+        setDbConfigured(true);
+      } else {
+        setLoading(false);
+      }
     }
   }, []);
 
   const handleConnectDb = (url: string, key: string) => {
+    localStorage.setItem('DB_TYPE', 'supabase');
     localStorage.setItem('SB_URL', url);
     localStorage.setItem('SB_KEY', key);
     const client = createClient(url, key);
     setSupabase(client);
+    setDbClient(new SupabaseDbWrapper(client));
+    setDbType('supabase');
     setDbConfigured(true);
   };
 
-  const handleDisconnectDb = () => {
+  const handleConnectSheets = (spreadsheetId: string, token: string) => {
+    localStorage.setItem('DB_TYPE', 'sheets');
+    localStorage.setItem('GS_SPREADSHEET_ID', spreadsheetId);
+    const client = new GoogleSheetsDbWrapper(spreadsheetId, token);
+    setDbClient(client);
+    setDbType('sheets');
+    setDbConfigured(true);
+  };
+
+  const handleDisconnectDb = async () => {
+    if (dbType === 'sheets') {
+      await googleSignOut();
+    }
+    localStorage.removeItem('DB_TYPE');
     localStorage.removeItem('SB_URL');
     localStorage.removeItem('SB_KEY');
+    localStorage.removeItem('GS_SPREADSHEET_ID');
     window.location.reload();
   };
 
   const refreshData = async () => {
-    if (!supabase) return;
+    if (!dbClient) return;
     setLoading(true);
     setError(null);
     setIsInvalidApiKey(false);
     
     try {
       const [
-        { data: empData, error: empErr }, 
-        { data: offData, error: offErr }, 
-        { data: destOffData, error: destErr },
-        { data: skpdData, error: skpdErr }, 
-        { data: costData, error: costErr }, 
-        { data: subData, error: subErr }, 
-        { data: assignData, error: assignErr }
+        empData, 
+        offData, 
+        destOffData, 
+        skpdData, 
+        costData, 
+        subData, 
+        assignData
       ] = await Promise.all([
-        supabase.from('employees').select('*').order('name'),
-        supabase.from('officials').select('*').order('name'),
-        supabase.from('destination_officials').select('*').order('name'),
-        supabase.from('skpd_config').select('*').eq('id', 'main').maybeSingle(),
-        supabase.from('master_costs').select('*').order('destination'),
-        supabase.from('sub_activities').select('*').order('code'),
-        supabase.from('assignments').select('*').order('created_at', { ascending: false })
+        dbClient.fetchEmployees(),
+        dbClient.fetchOfficials(),
+        dbClient.fetchDestinationOfficials(),
+        dbClient.fetchSKPDConfig(),
+        dbClient.fetchMasterCosts(),
+        dbClient.fetchSubActivities(),
+        dbClient.fetchAssignments()
       ]);
 
-      const anyErr = empErr || offErr || destErr || (skpdErr && skpdErr.code !== 'PGRST116') || costErr || subErr || assignErr;
-      
-      if (anyErr) {
-        if (anyErr.message.toLowerCase().includes('apikey') || anyErr.message.toLowerCase().includes('invalid api key')) {
-          setIsInvalidApiKey(true);
-        }
-        throw anyErr;
-      }
-
-      if (empData) setEmployees(empData.map(e => ({ 
-        id: e.id, name: e.name, nip: e.nip, pangkatGol: e.pangkat_gol, 
-        jabatan: e.jabatan, representationLuar: e.representation_luar, 
-        representationDalam: e.representation_dalam 
-      })));
+      if (empData) setEmployees(empData);
       if (offData) setOfficials(offData);
       if (destOffData) setDestinationOfficials(destOffData);
-      if (skpdData) setSkpdConfig({ 
-        provinsi: skpdData.provinsi, namaSkpd: skpdData.nama_skpd, 
-        alamat: skpdData.alamat, lokasi: skpdData.lokasi, 
-        kepalaNama: skpdData.kepala_nama, kepalaNip: skpdData.kepala_nip, 
-        kepalaJabatan: skpdData.kepala_jabatan, bendaharaNama: skpdData.bendahara_nama, 
-        bendaharaNip: skpdData.bendahara_nip, pptkNama: skpdData.pptk_nama, 
-        pptkNip: skpdData.pptk_nip, logo: skpdData.logo 
-      });
-      if (costData) setMasterCosts(costData.map(c => ({ 
-        destination: c.destination, dailyAllowance: Number(c.daily_allowance), 
-        lodging: Number(c.lodging), transportBbm: Number(c.transport_bbm), 
-        seaTransport: Number(c.sea_transport), airTransport: Number(c.air_transport), 
-        taxi: Number(c.taxi) 
-      })));
-      if (subData) setSubActivities(subData.map(s => ({
-        code: s.code,
-        name: s.name,
-        budgetCode: s.budget_code,
-        anggaran: Number(s.anggaran || 0),
-        spd: s.spd || '',
-        triwulan1: Number(s.triwulan1 || 0),
-        triwulan2: Number(s.triwulan2 || 0),
-        triwulan3: Number(s.triwulan3 || 0),
-        triwulan4: Number(s.triwulan4 || 0)
-      })));
-      if (assignData) setAssignments(assignData.map(a => ({ 
-        ...a, selectedEmployeeIds: a.selected_employee_ids, travelType: a.travel_type, 
-        assignmentNumber: a.assignment_number, subActivityCode: a.sub_activity_code, 
-        startDate: a.start_date, endDate: a.end_date, durationDays: a.duration_days, 
-        signerId: a.signer_id, pptkId: a.pptk_id, bendaharaId: a.bendahara_id, 
-        signDate: a.sign_date, signedAt: a.signed_at,
-        destinationOfficialIds: a.destination_official_ids || []
-      })));
+      if (skpdData) setSkpdConfig(skpdData);
+      if (costData) setMasterCosts(costData);
+      if (subData) setSubActivities(subData);
+      if (assignData) setAssignments(assignData);
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Gagal memuat data dari database');
@@ -230,36 +241,30 @@ const App: React.FC = () => {
     }
   };
 
-  useEffect(() => { if (dbConfigured) refreshData(); }, [dbConfigured]);
+  useEffect(() => { if (dbConfigured) refreshData(); }, [dbConfigured, dbClient]);
 
   const handleSaveAssignment = async (data: TravelAssignment) => {
-    if (!supabase) return;
-    // Fix: access destinationOfficialIds from data (camelCase) to save to DB (snake_case)
-    const { error } = await supabase.from('assignments').upsert({
-      id: data.id, assignment_number: data.assignmentNumber, sub_activity_code: data.subActivityCode, 
-      purpose: data.purpose, origin: data.origin, travel_type: data.travelType, 
-      transportation: data.transportation, destination: data.destination, 
-      start_date: data.startDate, end_date: data.endDate, duration_days: data.durationDays, 
-      selected_employee_ids: data.selectedEmployeeIds, costs: data.costs, 
-      signed_at: data.signedAt, sign_date: data.signDate, pptk_id: data.pptkId, 
-      signer_id: data.signerId, bendahara_id: data.bendaharaId,
-      destination_official_ids: data.destinationOfficialIds || []
-    });
-    if (error) alert(`Gagal menyimpan: ${error.message}`);
-    else { await refreshData(); setViewMode(ViewMode.TRAVEL_LIST); }
+    if (!dbClient) return;
+    try {
+      await dbClient.saveAssignment(data);
+      await refreshData();
+      setViewMode(ViewMode.TRAVEL_LIST);
+    } catch (error: any) {
+      alert(`Gagal menyimpan: ${error.message}`);
+    }
   };
 
   const handleUpdateDestOfficials = async (assignId: string, destIds: string[]) => {
-    if (!supabase) return;
-    // Fix: Use 'destIds' parameter instead of undefined 'ids' variable
-    const { error } = await supabase.from('assignments').update({ 
-      destination_official_ids: destIds 
-    }).eq('id', assignId);
-    if (error) alert(error.message);
-    else await refreshData();
+    if (!dbClient) return;
+    try {
+      await dbClient.updateDestOfficials(assignId, destIds);
+      await refreshData();
+    } catch (error: any) {
+      alert(`Gagal menyimpan pejabat tujuan: ${error.message}`);
+    }
   };
 
-  if (!dbConfigured && !loading) return <DatabaseSetup onConnect={handleConnectDb} />;
+  if (!dbConfigured && !loading) return <DatabaseSetup onConnect={handleConnectDb} onConnectSheets={handleConnectSheets} />;
   if (loading) return <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center flex-col"><RefreshCw className="animate-spin text-blue-400 mb-4" size={48} /><h2 className="font-black text-xl tracking-widest italic">MENGHUBUNGKAN...</h2></div>;
   
   if (error) return (
@@ -378,6 +383,7 @@ const App: React.FC = () => {
             { id: ViewMode.DESTINATION_OFFICIAL_LIST, label: 'Pejabat Luar', icon: UserPlus },
             { id: ViewMode.TRAVEL_LIST, label: 'Riwayat SPT', icon: Calendar },
             { id: ViewMode.MASTER_DATA, label: 'Data Master', icon: Database },
+            { id: ViewMode.SYNC_DATA, label: 'Sinkronisasi', icon: RefreshCw },
             { id: ViewMode.REPORT, label: 'Laporan', icon: BarChart3 },
             { id: ViewMode.PRINT_MENU, label: 'Pencetakan', icon: Printer },
           ].map(item => (<button key={item.id} onClick={() => setViewMode(item.id)} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all font-bold text-sm ${viewMode === item.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' : 'text-slate-400 hover:bg-slate-800'}`}><item.icon size={18} /> {item.label}</button>))}
@@ -475,23 +481,27 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {viewMode === ViewMode.SKPD_CONFIG && <SKPDForm config={skpdConfig} onSave={async (cfg) => { if (supabase) { const { error } = await supabase.from('skpd_config').upsert({ id: 'main', provinsi: cfg.provinsi, nama_skpd: cfg.namaSkpd, alamat: cfg.alamat, lokasi: cfg.lokasi, kepala_nama: cfg.kepalaNama, kepala_nip: cfg.kepalaNip, kepala_jabatan: cfg.kepalaJabatan, bendahara_nama: cfg.bendaharaNama, bendahara_nip: cfg.bendaharaNip, pptk_nama: cfg.pptkNama, pptk_nip: cfg.pptkNip, logo: cfg.logo }); if (error) alert(error.message); else await refreshData(); } }} />}
-        {viewMode === ViewMode.OFFICIAL_LIST && <OfficialForm officials={officials} onSave={async (o) => { if (supabase) { const { error } = await supabase.from('officials').upsert({ id: o.id || Date.now().toString(), ...o }); if (error) alert(error.message); else await refreshData(); } }} onDelete={async (id) => { if (supabase && confirm('Hapus?')) { const { error } = await supabase.from('officials').delete().eq('id', id); if (error) alert(error.message); else await refreshData(); } }} />}
-        {viewMode === ViewMode.EMPLOYEE_LIST && <EmployeeForm employees={employees} onSave={async (e) => { if (supabase) { const { error } = await supabase.from('employees').upsert({ id: e.id, name: e.name, nip: e.nip, pangkat_gol: e.pangkatGol, jabatan: e.jabatan, representation_luar: e.representationLuar, representation_dalam: e.representationDalam }); if (error) alert(error.message); else await refreshData(); } }} onDelete={async (id) => { if (supabase && confirm('Hapus?')) { const { error } = await supabase.from('employees').delete().eq('id', id); if (error) alert(error.message); else await refreshData(); } }} onClear={async () => { if (supabase) { const { error } = await supabase.from('employees').delete().neq('id', '___'); if (error) alert(error.message); else await refreshData(); } }} />}
+        {viewMode === ViewMode.SKPD_CONFIG && <SKPDForm config={skpdConfig} onSave={async (cfg) => { if (dbClient) { try { await dbClient.saveSKPDConfig(cfg); await refreshData(); } catch (err: any) { alert(err.message || 'Gagal menyimpan konfigurasi'); } } }} />}
+        {viewMode === ViewMode.OFFICIAL_LIST && <OfficialForm officials={officials} onSave={async (o) => { if (dbClient) { try { await dbClient.saveOfficial(o); await refreshData(); } catch (err: any) { alert(err.message || 'Gagal menyimpan pejabat'); } } }} onDelete={async (id) => { if (dbClient && confirm('Hapus?')) { try { await dbClient.deleteOfficial(id); await refreshData(); } catch (err: any) { alert(err.message || 'Gagal menghapus'); } } }} />}
+        {viewMode === ViewMode.EMPLOYEE_LIST && <EmployeeForm employees={employees} onSave={async (e) => { if (dbClient) { try { await dbClient.saveEmployee(e); await refreshData(); } catch (err: any) { alert(err.message || 'Gagal menyimpan pegawai'); } } }} onDelete={async (id) => { if (dbClient && confirm('Hapus?')) { try { await dbClient.deleteEmployee(id); await refreshData(); } catch (err: any) { alert(err.message || 'Gagal menghapus'); } } }} onClear={async () => { if (dbClient && confirm('Hapus semua data pegawai?')) { try { await dbClient.clearEmployees(); await refreshData(); } catch (err: any) { alert(err.message || 'Gagal menghapus data'); } } }} />}
         
         {viewMode === ViewMode.DESTINATION_OFFICIAL_LIST && (
           <DestinationOfficialForm 
             officials={destinationOfficials} 
             onSave={async (o) => {
-              if (supabase) {
-                const { error } = await supabase.from('destination_officials').upsert(o);
-                if (error) alert(error.message); else await refreshData();
+              if (dbClient) {
+                try {
+                  await dbClient.saveDestinationOfficial(o);
+                  await refreshData();
+                } catch (err: any) { alert(err.message || 'Gagal menyimpan data'); }
               }
             }} 
             onDelete={async (id) => {
-              if (supabase && confirm('Hapus data pejabat ini?')) {
-                const { error } = await supabase.from('destination_officials').delete().eq('id', id);
-                if (error) alert(error.message); else await refreshData();
+              if (dbClient && confirm('Hapus data pejabat ini?')) {
+                try {
+                  await dbClient.deleteDestinationOfficial(id);
+                  await refreshData();
+                } catch (err: any) { alert(err.message || 'Gagal menghapus data'); }
               }
             }}
             onPrint={(off) => {
@@ -560,8 +570,8 @@ const App: React.FC = () => {
                           >
                             <Edit2 size={16}/>
                           </button>
-                          <button 
-                            onClick={async () => { if(supabase && confirm('Anda yakin ingin menghapus data ini?')) { await supabase.from('assignments').delete().eq('id', a.id); await refreshData(); } }} 
+                           <button 
+                            onClick={async () => { if(dbClient && confirm('Anda yakin ingin menghapus data ini?')) { try { await dbClient.deleteAssignment(a.id); await refreshData(); } catch (err: any) { alert(err.message || 'Gagal menghapus'); } } }} 
                             className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition"
                             title="Hapus SPT"
                           >
@@ -581,7 +591,7 @@ const App: React.FC = () => {
             </div>
           </div>
         )}
-
+ 
         {isDestManagerOpen && currentAssignForDest && (
           <DestinationOfficialManager 
             officials={destinationOfficials}
@@ -591,23 +601,27 @@ const App: React.FC = () => {
               setIsDestManagerOpen(false);
             }}
             onSaveMaster={async (o) => {
-              if (supabase) {
-                await supabase.from('destination_officials').upsert({ ...o, id: o.id || Date.now().toString() });
-                await refreshData();
+              if (dbClient) {
+                try {
+                  await dbClient.saveDestinationOfficial({ ...o, id: o.id || Date.now().toString() });
+                  await refreshData();
+                } catch (err: any) { alert(err.message || 'Gagal menyimpan'); }
               }
             }}
             onDeleteMaster={async (id) => {
-              if (supabase && confirm('Hapus dari master?')) {
-                await supabase.from('destination_officials').delete().eq('id', id);
-                await refreshData();
+              if (dbClient && confirm('Hapus dari master?')) {
+                try {
+                  await dbClient.deleteDestinationOfficial(id);
+                  await refreshData();
+                } catch (err: any) { alert(err.message || 'Gagal menghapus'); }
               }
             }}
             onClose={() => setIsDestManagerOpen(false)}
           />
         )}
-
+ 
         {viewMode === ViewMode.ADD_TRAVEL && <TravelAssignmentForm employees={employees} masterCosts={masterCosts} subActivities={subActivities} officials={officials} initialData={editingAssignment || undefined} onSave={handleSaveAssignment} onCancel={() => setViewMode(ViewMode.TRAVEL_LIST)} />}
-        {viewMode === ViewMode.MASTER_DATA && <MasterDataForm masterCosts={masterCosts} subActivities={subActivities} onSaveCost={async (c) => { if(supabase) { await supabase.from('master_costs').upsert({ destination: c.destination, daily_allowance: c.dailyAllowance, lodging: c.lodging, transport_bbm: c.transportBbm, sea_transport: c.seaTransport, air_transport: c.airTransport, taxi: c.taxi }); await refreshData(); } }} onDeleteCost={async (d) => { if(supabase) { await supabase.from('master_costs').delete().eq('destination', d); await refreshData(); } }} onClearCosts={async () => { if(supabase) { await supabase.from('master_costs').delete().neq('destination', '___'); await refreshData(); } }} onSaveSub={async (s) => { if(supabase) { const { error } = await supabase.from('sub_activities').upsert({ code: s.code, name: s.name, budget_code: s.budgetCode || '', anggaran: s.anggaran || 0, spd: s.spd || '0', triwulan1: s.triwulan1 || 0, triwulan2: s.triwulan2 || 0, triwulan3: s.triwulan3 || 0, triwulan4: s.triwulan4 || 0 }); if (error) alert(`Gagal Simpan: ${error.message}`); else await refreshData(); } }} onDeleteSub={async (c) => { if(supabase) { const data = await supabase.from('assignments').select('id').eq('sub_activity_code', c).limit(1); if (data.data && data.data.length > 0) { alert('Gagal Hapus: Sub Kegiatan ini sedang digunakan dalam riwayat SPT. Hapus SPT terkait terlebih dahulu.'); return; } const { error } = await supabase.from('sub_activities').delete().eq('code', c); if (error) alert(`Gagal Hapus: ${error.message}`); else await refreshData(); } }} onClearSubs={async () => { if(supabase && confirm('Hapus semua sub kegiatan?')) { await supabase.from('sub_activities').delete().neq('code', '___'); await refreshData(); } }} />}
+        {viewMode === ViewMode.MASTER_DATA && <MasterDataForm masterCosts={masterCosts} subActivities={subActivities} onSaveCost={async (c) => { if(dbClient) { try { await dbClient.saveMasterCost(c); await refreshData(); } catch (err: any) { alert(err.message || 'Gagal menyimpan biaya'); } } }} onDeleteCost={async (d) => { if(dbClient) { try { await dbClient.deleteMasterCost(d); await refreshData(); } catch (err: any) { alert(err.message || 'Gagal menghapus'); } } }} onClearCosts={async () => { if(dbClient && confirm('Hapus semua data biaya?')) { try { await dbClient.clearMasterCosts(); await refreshData(); } catch (err: any) { alert(err.message || 'Gagal menghapus'); } } }} onSaveSub={async (s) => { if(dbClient) { try { await dbClient.saveSubActivity(s); await refreshData(); } catch (err: any) { alert(err.message || 'Gagal menyimpan sub kegiatan'); } } }} onDeleteSub={async (c) => { if(dbClient) { try { const hasAssigned = assignments.some(a => a.subActivityCode === c); if (hasAssigned) { alert('Gagal Hapus: Sub Kegiatan ini sedang digunakan dalam riwayat SPT. Hapus SPT terkait terlebih dahulu.'); return; } await dbClient.deleteSubActivity(c); await refreshData(); } catch (err: any) { alert(err.message || 'Gagal menghapus sub kegiatan'); } } }} onClearSubs={async () => { if(dbClient && confirm('Hapus semua sub kegiatan?')) { try { await dbClient.clearSubActivities(); await refreshData(); } catch (err: any) { alert(err.message || 'Gagal menghapus'); } } }} />}
         
         {viewMode === ViewMode.REPORT && (
           <ReportView 
@@ -617,6 +631,21 @@ const App: React.FC = () => {
               setCurrentAssignForDest(a);
               setIsDestManagerOpen(true);
             }}
+          />
+        )}
+
+        {viewMode === ViewMode.SYNC_DATA && (
+          <SyncView 
+            dbType={dbType}
+            dbClient={dbClient}
+            employees={employees}
+            officials={officials}
+            destinationOfficials={destinationOfficials}
+            skpdConfig={skpdConfig}
+            masterCosts={masterCosts}
+            subActivities={subActivities}
+            assignments={assignments}
+            onRefresh={refreshData}
           />
         )}
 

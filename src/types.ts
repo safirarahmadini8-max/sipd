@@ -111,7 +111,8 @@ export enum ViewMode {
   SKPD_CONFIG = 'SKPD_CONFIG',
   PRINT_MENU = 'PRINT_MENU',
   PRINT_PREVIEW = 'PRINT_PREVIEW',
-  REPORT = 'REPORT'
+  REPORT = 'REPORT',
+  SYNC_DATA = 'SYNC_DATA'
 }
 
 export enum PrintType {
